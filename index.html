@@ -62,7 +62,7 @@ footer{background:#111;color:#fff;padding:42px 0}.foot{display:grid;grid-templat
 <div id="checkoutForm"><div class="top"><h2>تأكيد الطلب</h2><button class="x" onclick="closeCheckout()">×</button></div>
 <div class="form"><input id="name" placeholder="الاسم بالكامل"><input id="phone" placeholder="رقم الهاتف"><select id="gov"><option value="">اختر المحافظة</option><option>القاهرة</option><option>الجيزة</option><option>القليوبية</option><option>الإسكندرية</option><option>الدقهلية</option><option>الشرقية</option><option>الغربية</option><option>المنوفية</option><option>البحيرة</option><option>بورسعيد</option><option>الإسماعيلية</option><option>السويس</option><option>أسيوط</option><option>سوهاج</option><option>قنا</option><option>الأقصر</option><option>أسوان</option><option>أخرى</option></select><textarea id="address" rows="3" placeholder="العنوان بالتفصيل"></textarea></div>
 <button class="checkout" onclick="submitOrder()">تأكيد الطلب — الدفع عند الاستلام</button></div>
-<div class="success" id="success"><h2>تم استلام طلبك ✅</h2><p>هذه نسخة تجريبية. بعد ربط الاستضافة ونظام الطلبات سيتم إرسال الطلب للفريق تلقائيًا.</p><button class="checkout" onclick="closeCheckout();closeCart()">العودة للمتجر</button></div>
+<div class="success" id="success"><h2>تم تسجيل طلبك بنجاح ✅</h2><p id="successText">سيتم فتح WhatsApp لإرسال تفاصيل الطلب إلى STEPORA.</p><button class="checkout" id="waOrderBtn" target="_blank">إرسال الطلب عبر WhatsApp</button><button class="checkout" style="margin-top:8px;background:#eee;color:#111" onclick="closeCheckout();closeCart()">العودة للمتجر</button></div>
 </div></div>
 
 <script>
@@ -72,22 +72,224 @@ const products=[
 {id:3,name:"ST-03 Black Casual",price:599,old:699,tag:"اختيار يومي"},
 {id:4,name:"ST-04 Knit Lightweight",price:699,old:799,tag:"Premium Feel"},
 {id:5,name:"ST-05 Premium Sneaker",price:799,old:899,tag:"Premium"}];
-let cart=JSON.parse(localStorage.getItem("steporaCartV2")||"[]"), selected=null, selectedSize=null;
 
-function render(){document.getElementById("productsGrid").innerHTML=products.map(p=>`
-<article class="card"><div class="photo">👟</div><div class="body"><span class="tag">${p.tag}</span><h3>${p.name}</h3><div class="price">${p.price} ج <span class="old">${p.old} ج</span></div><button class="btn" onclick="openProduct(${p.id})">عرض المنتج</button></div></article>`).join("")}
-function save(){localStorage.setItem("steporaCartV2",JSON.stringify(cart));updateCart()}
-function openProduct(id){selected=products.find(p=>p.id===id);selectedSize=null;document.getElementById("pTitle").textContent=selected.name;document.getElementById("pName").textContent=selected.name;document.getElementById("pTag").textContent=selected.tag;document.getElementById("pPrice").innerHTML=selected.price+" ج <span class='old'>"+selected.old+" ج</span>";document.getElementById("pQty").value=1;document.getElementById("sizes").innerHTML=[40,41,42,43,44,45].map(s=>`<button class="size" onclick="chooseSize(this,${s})">${s}</button>`).join("");document.getElementById("waLink").href="https://wa.me/201009900057?text="+encodeURIComponent("مرحباً STEPORA، أريد طلب "+selected.name+" — المقاس: ___ — اللون: ___");document.getElementById("productModal").classList.add("open")}
-function chooseSize(el,s){document.querySelectorAll(".size").forEach(x=>x.classList.remove("active"));el.classList.add("active");selectedSize=s}
+const STORE_WA="201009900057";
+let cart=JSON.parse(localStorage.getItem("steporaCartV3")||"[]"), selected=null, selectedSize=null;
+
+function render(){
+  document.getElementById("productsGrid").innerHTML=products.map(p=>`
+  <article class="card">
+    <div class="photo">👟</div>
+    <div class="body">
+      <span class="tag">${p.tag}</span>
+      <h3>${p.name}</h3>
+      <div class="price">${p.price} ج <span class="old">${p.old} ج</span></div>
+      <button class="btn" onclick="openProduct(${p.id})">عرض المنتج</button>
+    </div>
+  </article>`).join("")
+}
+
+function save(){
+  localStorage.setItem("steporaCartV3",JSON.stringify(cart));
+  updateCart();
+}
+
+function openProduct(id){
+  selected=products.find(p=>p.id===id);
+  selectedSize=null;
+  document.getElementById("pTitle").textContent=selected.name;
+  document.getElementById("pName").textContent=selected.name;
+  document.getElementById("pTag").textContent=selected.tag;
+  document.getElementById("pPrice").innerHTML=selected.price+" ج <span class='old'>"+selected.old+" ج</span>";
+  document.getElementById("pQty").value=1;
+  document.getElementById("sizes").innerHTML=[40,41,42,43,44,45].map(s=>`
+    <button class="size" onclick="chooseSize(this,${s})">${s}</button>`).join("");
+  document.getElementById("waLink").href="https://wa.me/"+STORE_WA+"?text="+encodeURIComponent(
+    "مرحباً STEPORA، أريد طلب "+selected.name+" — المقاس: ___ — اللون: ___"
+  );
+  document.getElementById("productModal").classList.add("open");
+}
+
+function chooseSize(el,s){
+  document.querySelectorAll(".size").forEach(x=>x.classList.remove("active"));
+  el.classList.add("active");
+  selectedSize=s;
+}
+
 function closeProduct(){document.getElementById("productModal").classList.remove("open")}
-function addSelected(){if(!selectedSize){alert("اختر المقاس أولاً.");return}let color=document.getElementById("color").value,qty=+document.getElementById("pQty").value||1;let x=cart.find(i=>i.id===selected.id&&i.size===selectedSize&&i.color===color);if(x)x.qty+=qty;else cart.push({id:selected.id,size:selectedSize,color,qty});save();closeProduct();openCart()}
-function updateCart(){document.getElementById("count").textContent=cart.reduce((s,i)=>s+i.qty,0);let total=0;document.getElementById("items").innerHTML=cart.length?cart.map((i,n)=>{let p=products.find(x=>x.id===i.id);total+=p.price*i.qty;return `<div class="item"><div class="mini">👟</div><div style="flex:1"><b>${p.name}</b><div>${i.size} / ${i.color}</div><div>${p.price} ج × ${i.qty}</div><div class="qty"><button onclick="change(${n},-1)">−</button><span>${i.qty}</span><button onclick="change(${n},1)">+</button><button onclick="removeItem(${n})">حذف</button></div></div></div>`}).join(""):"<p>السلة فارغة.</p>";document.getElementById("total").textContent=total}
-function change(n,d){cart[n].qty+=d;if(cart[n].qty<=0)cart.splice(n,1);save()}function removeItem(n){cart.splice(n,1);save()}
-function openCart(){document.getElementById("drawer").classList.add("open");updateCart()}function closeCart(){document.getElementById("drawer").classList.remove("open")}
-function openCheckout(){if(!cart.length){alert("السلة فارغة.");return}document.getElementById("checkoutModal").classList.add("open")}
+
+function addSelected(){
+  if(!selectedSize){alert("اختر المقاس أولاً.");return}
+  let color=document.getElementById("color").value;
+  let qty=Math.max(1,+document.getElementById("pQty").value||1);
+  let x=cart.find(i=>i.id===selected.id&&i.size===selectedSize&&i.color===color);
+  if(x)x.qty+=qty;
+  else cart.push({id:selected.id,size:selectedSize,color,qty});
+  save();
+  closeProduct();
+  openCart();
+}
+
+function getCartTotal(){
+  return cart.reduce((sum,i)=>{
+    let p=products.find(x=>x.id===i.id);
+    return sum+(p?p.price*i.qty:0);
+  },0);
+}
+
+function updateCart(){
+  document.getElementById("count").textContent=cart.reduce((s,i)=>s+i.qty,0);
+  let total=0;
+  document.getElementById("items").innerHTML=cart.length?cart.map((i,n)=>{
+    let p=products.find(x=>x.id===i.id);
+    total+=p.price*i.qty;
+    return `<div class="item">
+      <div class="mini">👟</div>
+      <div style="flex:1">
+        <b>${p.name}</b>
+        <div>المقاس: ${i.size} / اللون: ${i.color}</div>
+        <div>${p.price} ج × ${i.qty}</div>
+        <div class="qty">
+          <button onclick="change(${n},-1)">−</button>
+          <span>${i.qty}</span>
+          <button onclick="change(${n},1)">+</button>
+          <button onclick="removeItem(${n})">حذف</button>
+        </div>
+      </div>
+    </div>`;
+  }).join(""):"<p>السلة فارغة.</p>";
+  document.getElementById("total").textContent=total;
+}
+
+function change(n,d){
+  cart[n].qty+=d;
+  if(cart[n].qty<=0)cart.splice(n,1);
+  save();
+}
+
+function removeItem(n){
+  cart.splice(n,1);
+  save();
+}
+
+function openCart(){
+  document.getElementById("drawer").classList.add("open");
+  updateCart();
+}
+
+function closeCart(){document.getElementById("drawer").classList.remove("open")}
+
+function openCheckout(){
+  if(!cart.length){alert("السلة فارغة.");return}
+  document.getElementById("checkoutForm").style.display="block";
+  document.getElementById("success").classList.remove("show");
+  document.getElementById("checkoutModal").classList.add("open");
+}
+
 function closeCheckout(){document.getElementById("checkoutModal").classList.remove("open")}
-function submitOrder(){let n=document.getElementById("name").value.trim(),ph=document.getElementById("phone").value.trim(),g=document.getElementById("gov").value,a=document.getElementById("address").value.trim();if(!n||!ph||!g||!a){alert("من فضلك أكمل البيانات.");return}document.getElementById("checkoutForm").style.display="none";document.getElementById("success").classList.add("show");cart=[];save()}
-render();updateCart();
+
+function createOrderNumber(){
+  const now=new Date();
+  const stamp=now.getFullYear().toString().slice(-2)+
+    String(now.getMonth()+1).padStart(2,"0")+
+    String(now.getDate()).padStart(2,"0")+
+    String(now.getHours()).padStart(2,"0")+
+    String(now.getMinutes()).padStart(2,"0")+
+    String(now.getSeconds()).padStart(2,"0");
+  return "ST-"+stamp;
+}
+
+function buildOrderMessage(order){
+  let lines=[
+    "🛍️ *طلب جديد من STEPORA*",
+    "━━━━━━━━━━━━━━",
+    "🧾 رقم الطلب: "+order.id,
+    "👤 الاسم: "+order.name,
+    "📞 الهاتف: "+order.phone,
+    "📍 المحافظة: "+order.gov,
+    "🏠 العنوان: "+order.address,
+    "",
+    "👟 *تفاصيل الطلب:*"
+  ];
+
+  order.items.forEach((i,idx)=>{
+    lines.push(
+      (idx+1)+") "+i.name+
+      " | مقاس "+i.size+
+      " | "+i.color+
+      " | الكمية "+i.qty+
+      " | "+i.price*i.qty+" ج"
+    );
+  });
+
+  lines.push(
+    "",
+    "💰 *الإجمالي: "+order.total+" جنيه*",
+    "💵 طريقة الدفع: الدفع عند الاستلام",
+    "━━━━━━━━━━━━━━",
+    "يرجى تأكيد الطلب وتجهيز الشحن."
+  );
+
+  return lines.join("\n");
+}
+
+function submitOrder(){
+  let n=document.getElementById("name").value.trim();
+  let ph=document.getElementById("phone").value.trim();
+  let g=document.getElementById("gov").value;
+  let a=document.getElementById("address").value.trim();
+
+  if(!n||!ph||!g||!a){
+    alert("من فضلك أكمل الاسم ورقم الهاتف والمحافظة والعنوان.");
+    return;
+  }
+
+  if(cart.length===0){
+    alert("السلة فارغة.");
+    closeCheckout();
+    return;
+  }
+
+  const order={
+    id:createOrderNumber(),
+    name:n,
+    phone:ph,
+    gov:g,
+    address:a,
+    items:cart.map(i=>{
+      const p=products.find(x=>x.id===i.id);
+      return {id:p.id,name:p.name,price:p.price,size:i.size,color:i.color,qty:i.qty};
+    }),
+    total:getCartTotal(),
+    payment:"الدفع عند الاستلام",
+    createdAt:new Date().toISOString()
+  };
+
+  // حفظ نسخة محلية من الطلب على جهاز العميل
+  const orders=JSON.parse(localStorage.getItem("steporaOrdersV1")||"[]");
+  orders.push(order);
+  localStorage.setItem("steporaOrdersV1",JSON.stringify(orders));
+
+  const message=buildOrderMessage(order);
+  const waUrl="https://wa.me/"+STORE_WA+"?text="+encodeURIComponent(message);
+
+  document.getElementById("checkoutForm").style.display="none";
+  document.getElementById("success").classList.add("show");
+  document.getElementById("successText").innerHTML=
+    "تم إنشاء الطلب رقم <b>"+order.id+"</b> بإجمالي <b>"+order.total+" جنيه</b>.<br>اضغط الزر لإرسال تفاصيل الطلب إلى STEPORA عبر WhatsApp.";
+
+  const btn=document.getElementById("waOrderBtn");
+  btn.onclick=function(){window.open(waUrl,"_blank","noopener");};
+
+  // فتح WhatsApp تلقائياً بعد تسجيل الطلب
+  window.open(waUrl,"_blank","noopener");
+
+  cart=[];
+  save();
+}
+
+render();
+updateCart();
 </script>
 
 <!-- STEPORA Contact Buttons -->
