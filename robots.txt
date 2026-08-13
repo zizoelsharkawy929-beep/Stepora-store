@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://zizoelsharkawy929-beep.github.io/Stepora-store/sitemap.xml
